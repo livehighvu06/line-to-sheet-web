@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import Tabs, { type TabItem } from "./components/Tabs";
 import LineToSheetTab from "./components/LineToSheetTab";
 
-/** 佔位分頁：未來新功能替換此處即可。 */
-function ComingSoon() {
-  return (
-    <section className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-      更多工具規劃中，敬請期待。
-    </section>
-  );
-}
+// 刷卡對帳頁相依較重的 xlsx，延遲載入：開啟此分頁時才下載對應 chunk。
+const ReconcileTab = lazy(() => import("./components/ReconcileTab"));
+
+const Loading = () => <p className="text-sm text-slate-500">載入中…</p>;
 
 const tabs: TabItem[] = [
   { id: "line-to-sheet", label: "LINE 名單轉表格", content: <LineToSheetTab /> },
-  { id: "coming-soon", label: "更多功能（規劃中）", content: <ComingSoon /> },
+  {
+    id: "reconcile",
+    label: "刷卡對帳",
+    content: (
+      <Suspense fallback={<Loading />}>
+        <ReconcileTab />
+      </Suspense>
+    ),
+  },
 ];
 
 export default function App() {
