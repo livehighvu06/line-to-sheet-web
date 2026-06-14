@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+:root {
+  font-family: -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
+    system-ui, sans-serif;
+}
