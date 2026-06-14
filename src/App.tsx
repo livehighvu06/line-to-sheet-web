@@ -26,7 +26,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
       <main className="mx-auto max-w-3xl px-4 pt-6 pb-16">
-        <h1 className="mb-5 text-2xl font-bold">新飛趣工具箱</h1>
+        <h1 className="mb-5 text-2xl font-bold">馬上飛工具箱</h1>
         <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
       </main>
     </div>

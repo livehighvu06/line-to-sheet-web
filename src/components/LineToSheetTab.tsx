@@ -71,7 +71,7 @@ export default function LineToSheetTab() {
 
   return (
     <>
-      <h2 className="text-xl font-bold">新飛趣名單 → Google Sheet 待貼上表格</h2>
+      <h2 className="text-xl font-bold">馬上飛名單 → Google Sheet 待貼上表格</h2>
       <p className="mt-1 mb-5 text-sm text-slate-500">
         把 LINE 群組對話紀錄貼上，抽取訂單欄位，產生可直接貼進試算表的表格。
       </p>
@@ -101,11 +101,11 @@ export default function LineToSheetTab() {
           <ResultActions
             onCopy={copyTsv}
             onDownloadTsv={() =>
-              downloadText(`新飛趣_待貼上_${result.startDate}.tsv`, buildTsv(result.orders))
+              downloadText(`馬上飛_待貼上_${result.startDate}.tsv`, buildTsv(result.orders))
             }
             onDownloadReview={() =>
               downloadText(
-                `新飛趣_需確認_${result.startDate}.txt`,
+                `馬上飛_需確認_${result.startDate}.txt`,
                 buildReview(result.reviewRows),
               )
             }
