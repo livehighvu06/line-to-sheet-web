@@ -1,6 +1,6 @@
-# 新飛趣名單 → Google Sheet 待貼上表格（React 版）
+# LINE 對話紀錄 → Google Sheet 待貼上表格（React 版）
 
-把 LINE 群組「新飛趣名單」的對話紀錄，抽取訂單欄位，產生可直接貼進 Google Sheet 的表格。
+把 LINE 群組對話紀錄，抽取訂單欄位，產生可直接貼進 Google Sheet 的表格。
 **純前端**，所有處理都在瀏覽器內完成，對話內容與客戶資料不會上傳到任何伺服器。
 
 線上版：**https://livehighvu06.github.io/line-to-sheet-web/**
@@ -18,7 +18,7 @@ npm install
 npm run dev            # 本機開發伺服器
 npm run build          # 型別檢查 + 打包到 dist/
 npm run preview        # 預覽 build 產物
-npm run test:parser    # 解析平價測試（需 ~/Downloads/[LINE]新飛趣名單.txt）
+npm run test:parser    # 解析平價測試（需本機對話紀錄檔，路徑見 scripts/parser-parity.ts）
 ```
 
 ## 專案結構
@@ -65,6 +65,6 @@ src/
 
 ## 注意事項
 
-- 解析規則針對「新飛趣名單」訊息格式設計，對方需是相同格式的名單才適用。
+- 解析規則針對特定 LINE 群組的訊息格式設計，需相同格式的名單才適用。
 - 新增航空或調整規則：編輯 `src/lib/parser.ts` 的 `AIRLINES` 與 `parseOrder()`，
   並跑 `npm run test:parser` 確認未破壞既有基準。
