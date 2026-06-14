@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新飛趣名單 → Google Sheet 待貼上表格</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #d9dde2;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --text: #1f2933;
+    --muted: #6b7280;
+    --warn-bg: #fff7ed;
+    --warn-border: #fdba74;
+    --ok: #047857;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.92rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 18px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .privacy {
+    background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46;
+    border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; margin-bottom: 18px;
+  }
+  textarea {
+    width: 100%; min-height: 180px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85rem;
+  }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  label.fld { font-size: 0.9rem; color: var(--muted); }
+  select, input[type=file] { font-size: 0.92rem; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  button {
+    font-size: 0.92rem; font-weight: 600; border: none; border-radius: 7px;
+    padding: 9px 16px; cursor: pointer; background: var(--primary); color: #fff;
+  }
+  button:hover { background: var(--primary-dark); }
+  button.ghost { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+  button.ghost:hover { background: #eff6ff; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .summary { font-size: 1rem; margin: 0 0 4px; }
+  .summary b { color: var(--primary-dark); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+  .tablewrap { max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+  th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
+  tr.review td { background: var(--warn-bg); }
+  .flag { color: #c2410c; font-weight: 600; }
+  .reviewbox { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 8px; padding: 12px 14px; margin-top: 14px; font-size: 0.85rem; }
+  .reviewbox h3 { margin: 0 0 8px; font-size: 0.95rem; color: #9a3412; }
+  .reviewbox .item { padding: 6px 0; border-bottom: 1px dashed #fed7aa; }
+  .reviewbox .item:last-child { border-bottom: none; }
+  .reviewbox .raw { color: var(--muted); font-family: ui-monospace, monospace; }
+  .maptable td, .maptable th { white-space: normal; }
+  .hint { color: var(--muted); font-size: 0.85rem; }
+  code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+  .hidden { display: none; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>新飛趣名單 → Google Sheet 待貼上表格</h1>
+  <p class="sub">把 LINE 群組對話紀錄貼上，抽取訂單欄位，產生可直接貼進試算表的表格。</p>
+
+  <div class="privacy">🔒 所有處理都在你的瀏覽器內完成，對話內容與客戶資料<strong>不會上傳到任何伺服器</strong>。</div>
+
+  <div class="card">
+    <h2>1. 貼上對話紀錄（或上傳 .txt）</h2>
+    <textarea id="input" placeholder="把 LINE 匯出的對話紀錄文字整段貼在這裡…"></textarea>
+    <div class="row">
+      <input type="file" id="file" accept=".txt,text/plain">
+      <span class="hint">從 LINE 聊天室 →「其他設定」→「傳送聊天記錄」匯出文字檔。</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. 選擇起始日期</h2>
+    <div class="row">
+      <label class="fld" for="day">從這天開始（到最後）：</label>
+      <select id="day"><option value="">— 請先貼上內容 —</option></select>
+      <button id="run" disabled>整理</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <h2>3. 結果</h2>
+    <p class="summary" id="summary"></p>
+    <div class="actions">
+      <button id="copyTsv">複製待貼上表格</button>
+      <button class="ghost" id="dlTsv">下載 TSV</button>
+      <button class="ghost" id="dlReview">下載需確認清單</button>
+    </div>
+    <p class="hint">貼上方式：開啟試算表 → 最後一筆資料下方第一個空列的 <b>B 欄</b> → 貼上。A 欄與金額等財務欄位再自行補上。</p>
+    <div class="tablewrap">
+      <table id="preview">
+        <thead><tr><th>#</th><th>B 出發日期</th><th>C 航空</th><th>D 地點／團名</th><th>F 人數</th><th>J 姓名</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="reviewbox hidden" id="reviewbox">
+      <h3 id="reviewTitle"></h3>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>欄位對應</h2>
+    <table class="maptable" style="font-size:.88rem">
+      <thead><tr><th>欄</th><th>標題</th><th>範例（<code>8/19樂桃東京5日來回機票（lin-東京）9位</code>）</th></tr></thead>
+      <tbody>
+        <tr><td>B</td><td>出發日期</td><td>8/19</td></tr>
+        <tr><td>C</td><td>航空</td><td>樂桃（無航空則填「團」）</td></tr>
+        <tr><td>D</td><td>地點／團名</td><td>東京5日來回機票</td></tr>
+        <tr><td>F</td><td>報名人數</td><td>9</td></tr>
+        <tr><td>J</td><td>姓名</td><td>lin-東京（最後一組括號內的標籤）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// ── 設定（與 Python skill 一致）───────────────────────────────────────
+// 航空公司關鍵字（最長優先；泰亞航/泰越捷必須排在亞航前面）
+const AIRLINES = [
+  "大灣區航空", "泰越捷", "泰亞航", "阿聯酋", "泰獅",
+  "樂桃", "虎航", "亞航", "酷航", "長榮", "星宇", "星悅", "華航", "MSC",
+];
+
+const OPEN_BRACKETS = "（(";
+const CLOSE_BRACKETS = "）)";
+
+const reDay = () => /^(\d{4}\.\d{2}\.\d{2})\s*星期./;
+const reMsg = () => /^\d{1,2}:\d{2}\s+\S+\s+(.*)$/;
+const reDate = () => /(\d{1,2})\/(\d{1,2})/;
+
+// 掃描日分隔行，回傳 [{date, idx}]
+function indexDays(lines) {
+  const days = [];
+  lines.forEach((line, i) => {
+    const m = line.trim().match(reDay());
+    if (m) days.push({ date: m[1], idx: i });
+  });
+  return days;
+}
+
+// 從 qty 前最後一個收括號向左做深度配對，回傳對應開括號索引（找不到 -1）
+function findTagSpan(text, qtyCloseIdx) {
+  let depth = 0;
+  for (let i = qtyCloseIdx; i >= 0; i--) {
+    const ch = text[i];
+    if (CLOSE_BRACKETS.includes(ch)) {
+      depth++;
+    } else if (OPEN_BRACKETS.includes(ch)) {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+// 解析單則訂單內容，回傳物件或 null
+function parseOrder(content) {
+  if (!reDate().test(content)) return null;
+  if (![...CLOSE_BRACKETS].some((c) => content.includes(c))) return null;
+
+  // B 出發日期：去掉開頭「改」，取第一個 M/D
+  let body = content.replace(/^\s+/, "");
+  if (body.startsWith("改")) body = body.slice(1);
+  const m = reDate().exec(body);
+  if (!m) return null;
+  const date = `${parseInt(m[1], 10)}/${parseInt(m[2], 10)}`;
+
+  // 日期之後的剩餘文字；去除「出發」雜訊前綴
+  let rest = body.slice(m.index + m[0].length);
+  rest = rest.replace(/^\s*出發\s*/, "");
+
+  // 找 qty 前最後一個收括號，做深度配對切出 J / D
+  const lastClose = Math.max(rest.lastIndexOf("）"), rest.lastIndexOf(")"));
+  if (lastClose === -1) return null;
+  const openIdx = findTagSpan(rest, lastClose);
+  if (openIdx === -1) return null;
+
+  const name = rest.slice(openIdx + 1, lastClose).trim();   // J 姓名
+  const before = rest.slice(0, openIdx);                     // 航空 + 團名
+  const qtyRaw = rest.slice(lastClose + 1);                  // 人數區段
+
+  // C 航空 ＋ D 地點／團名
+  let airline = "";
+  let trip = before;
+  for (const air of AIRLINES) {
+    if (before.startsWith(air)) {
+      airline = air;
+      trip = before.slice(air.length);
+      break;
+    }
+  }
+  trip = trip.trim();
+
+  // F 報名人數：先去尾端 emoji／符號／空白，再去尾端 位/席位/席
+  let qty = qtyRaw.trim();
+  qty = qty.replace(/[^\p{L}\p{N}_+＋]+$/u, "").trim();
+  qty = qty.replace(/\s*(席位|席|位)\s*$/, "").trim();
+
+  // 找不到航空 → C 欄以「團」替代；仍標記需確認
+  // 用 \p{Nd}（含全形數字）對齊 Python 的 \d，避免全形人數被誤標
+  const review = airline === "" || !/^\p{Nd}+$/u.test(qty);
+  const airlineOut = airline ? airline : "團";
+
+  return { date, airline: airlineOut, trip, name, qty, review, raw: content.trim() };
+}
+
+// 從 startIdx 起逐行解析並去重，回傳 {orders, duplicates}
+function extractOrders(lines, startIdx) {
+  const orders = [];
+  const seen = new Set();
+  let duplicates = 0;
+  for (let i = startIdx; i < lines.length; i++) {
+    const m = lines[i].match(reMsg());
+    if (!m) continue;
+    const order = parseOrder(m[1]);
+    if (!order) continue;
+    const key = [order.date, order.airline, order.trip, order.name, order.qty].join(" ");
+    if (seen.has(key)) { duplicates++; continue; }
+    seen.add(key);
+    orders.push(order);
+  }
+  return { orders, duplicates };
+}
+
+// 產生 B～J 的 TSV（僅 B/C/D/F/J 有值，E/G/H/I 留空）
+function buildTsv(orders) {
+  return orders.map((o) =>
+    [o.date, o.airline, o.trip, "", o.qty, "", "", "", o.name].join("\t")
+  ).join("\n") + "\n";
+}
+
+// 產生需確認清單文字
+function buildReview(reviewRows) {
+  let out = `需人工確認清單（共 ${reviewRows.length} 筆）\n`;
+  out += "格式：B 出發日期 | C 航空 | D 地點團名 | F 人數 | J 姓名\n";
+  out += "=".repeat(60) + "\n\n";
+  for (const o of reviewRows) {
+    out += `${o.date} | ${o.airline} | ${o.trip} | ${o.qty} | ${o.name}\n`;
+    out += `  原文：${o.raw}\n\n`;
+  }
+  return out;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+let currentLines = [];
+let currentDays = [];
+let lastOrders = [];
+let lastReview = [];
+let lastDate = "";
+
+function refreshDays() {
+  currentLines = $("input").value.split("\n");
+  currentDays = indexDays(currentLines);
+  const sel = $("day");
+  sel.innerHTML = "";
+  if (currentDays.length === 0) {
+    sel.innerHTML = '<option value="">— 找不到日期，請確認內容格式 —</option>';
+    $("run").disabled = true;
+    return;
+  }
+  currentDays.forEach((d) => {
+    const opt = document.createElement("option");
+    opt.value = String(d.idx);
+    opt.textContent = d.date;
+    sel.appendChild(opt);
+  });
+  $("run").disabled = false;
+}
+
+function showToast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+function download(filename, text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function run() {
+  const sel = $("day");
+  const startIdx = parseInt(sel.value, 10);
+  if (Number.isNaN(startIdx)) return;
+  lastDate = currentDays.find((d) => d.idx === startIdx).date;
+
+  const { orders, duplicates } = extractOrders(currentLines, startIdx);
+  lastOrders = orders;
+  lastReview = orders.filter((o) => o.review);
+
+  $("summary").innerHTML =
+    `從 <b>${lastDate}</b> 起，去重後共 <b>${orders.length}</b> 筆訂單` +
+    `（已略過 ${duplicates} 筆重複）。`;
+
+  // 預覽表
+  const tbody = $("preview").querySelector("tbody");
+  tbody.innerHTML = "";
+  orders.forEach((o, n) => {
+    const tr = document.createElement("tr");
+    if (o.review) tr.className = "review";
+    const cells = [n + 1, o.date, o.airline, o.trip, o.qty, o.name];
+    cells.forEach((c, ci) => {
+      const td = document.createElement("td");
+      td.textContent = c;
+      if (ci === 0) td.style.color = "#9ca3af";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // 需確認清單
+  const box = $("reviewbox");
+  if (lastReview.length) {
+    box.classList.remove("hidden");
+    $("reviewTitle").textContent =
+      `⚠️ 需人工確認 ${lastReview.length} 筆（C 欄以「團」替代、或人數非純數字，請覆核）`;
+    const list = $("reviewList");
+    list.innerHTML = "";
+    lastReview.forEach((o) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML =
+        `<div>${escapeHtml(`${o.date} | ${o.airline} | ${o.trip} | ${o.qty} | ${o.name}`)}</div>` +
+        `<div class="raw">原文：${escapeHtml(o.raw)}</div>`;
+      list.appendChild(div);
+    });
+  } else {
+    box.classList.add("hidden");
+  }
+
+  $("result").classList.remove("hidden");
+  $("dlReview").disabled = lastReview.length === 0;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// 事件綁定
+$("input").addEventListener("input", refreshDays);
+$("file").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { $("input").value = reader.result; refreshDays(); };
+  reader.readAsText(f, "utf-8");
+});
+$("run").addEventListener("click", run);
+$("dlTsv").addEventListener("click", () => {
+  if (!lastOrders.length) return;
+  download(`新飛趣_待貼上_${lastDate}.tsv`, buildTsv(lastOrders));
+});
+$("dlReview").addEventListener("click", () => {
+  if (!lastReview.length) return;
+  download(`新飛趣_需確認_${lastDate}.txt`, buildReview(lastReview));
+});
+$("copyTsv").addEventListener("click", async () => {
+  if (!lastOrders.length) return;
+  try {
+    await navigator.clipboard.writeText(buildTsv(lastOrders));
+    showToast("已複製，到試算表 B 欄貼上即可");
+  } catch {
+    showToast("複製失敗，請改用「下載 TSV」");
+  }
+});
+</script>
+</body>
+</html>
