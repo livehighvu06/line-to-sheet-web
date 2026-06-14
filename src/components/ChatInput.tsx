@@ -31,7 +31,7 @@ export default function ChatInput({ value, onChange }: Props) {
           type="file"
           accept=".txt,text/plain"
           onChange={handleFile}
-          className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1"
+          className="cursor-pointer rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 hover:file:bg-slate-200"
         />
         <span className="text-sm text-slate-500">
           從 LINE 聊天室 →「其他設定」→「傳送聊天記錄」匯出文字檔。
