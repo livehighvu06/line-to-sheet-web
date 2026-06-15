@@ -1,4 +1,5 @@
 import type { Order } from "../lib/parser";
+import { AlertTriangleIcon } from "./icons";
 
 interface Props {
   rows: Order[];
@@ -10,8 +11,9 @@ export default function ReviewList({ rows }: Props) {
 
   return (
     <div className="mt-4 rounded-lg border border-orange-300 bg-orange-50 p-4 text-[13px]">
-      <h3 className="mb-2 text-sm font-semibold text-orange-800">
-        ⚠️ 需人工確認 {rows.length} 筆（C 欄以「團」替代、或人數非純數字，請覆核）
+      <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-orange-800">
+        <AlertTriangleIcon className="h-4 w-4 shrink-0 text-orange-500" />
+        需人工確認 {rows.length} 筆（C 欄以「團」替代、或人數非純數字，請覆核）
       </h3>
       <div>
         {rows.map((o, i) => (

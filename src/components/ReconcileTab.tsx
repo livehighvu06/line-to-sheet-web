@@ -8,11 +8,10 @@ import {
 } from "../lib/reconcile";
 import { downloadBlob } from "../lib/download";
 import Toast from "./Toast";
-
-const ghost =
-  "cursor-pointer rounded-lg border border-blue-600 bg-white px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
-const fileInput =
-  "cursor-pointer rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 hover:file:bg-slate-200";
+import PrivacyNote from "./PrivacyNote";
+import StepHeading from "./StepHeading";
+import { AlertTriangleIcon } from "./icons";
+import { btnAccent, btnGhost, fileInput } from "./buttonStyles";
 
 const STATUS_LABEL: Record<string, string> = {
   filled: "已填",
@@ -87,12 +86,12 @@ export default function ReconcileTab() {
         用業績表的姓名，去 LinkPay 訂單查詢檔的「付款名稱」找出對應的交易金額，回填到業績表金額欄。
       </p>
 
-      <p className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
-        🔒 兩份檔案都只在你的瀏覽器內處理，<strong>不會上傳到任何伺服器</strong>。
-      </p>
+      <PrivacyNote>
+        兩份檔案都只在你的瀏覽器內處理，<strong>不會上傳到任何伺服器</strong>。
+      </PrivacyNote>
 
-      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-        <h3 className="mb-3 text-base font-semibold">1. 上傳兩份檔案</h3>
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+        <StepHeading step={1} title="上傳兩份檔案" />
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <label className="w-28 text-sm text-slate-500">業績表（.xlsx）</label>
@@ -119,12 +118,12 @@ export default function ReconcileTab() {
               type="button"
               onClick={run}
               disabled={!perfFile || !linkFile}
-              className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className={btnAccent}
             >
               對帳
             </button>
             {(perfFile || linkFile || result) && (
-              <button type="button" onClick={clearAll} className={ghost}>
+              <button type="button" onClick={clearAll} className={btnGhost}>
                 清除
               </button>
             )}
@@ -134,24 +133,20 @@ export default function ReconcileTab() {
       </section>
 
       {result && (
-        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-          <h3 className="mb-3 text-base font-semibold">2. 結果</h3>
+        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+          <StepHeading step={2} title="結果" />
           <p className="mb-1">
-            共 <b className="text-blue-700">{result.rows.length}</b> 列，已回填{" "}
+            共 <b className="text-primary">{result.rows.length}</b> 列，已回填{" "}
             <b className="text-emerald-700">{result.filledCount}</b> 筆，需確認{" "}
             <b className="text-amber-700">{result.reviewCount}</b> 筆，查無{" "}
             <b className="text-slate-500">{result.noneCount}</b> 筆。
           </p>
 
           <div className="my-3 flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              onClick={copyAmounts}
-              className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 focus:outline-none"
-            >
+            <button type="button" onClick={copyAmounts} className={btnAccent}>
               複製金額欄
             </button>
-            <button type="button" onClick={downloadXlsx} className={ghost}>
+            <button type="button" onClick={downloadXlsx} className={btnGhost}>
               下載回填後 xlsx
             </button>
           </div>
@@ -197,7 +192,10 @@ export default function ReconcileTab() {
 
           {reviewRows.length > 0 && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-              <p className="mb-1 font-semibold text-amber-800">需確認（{reviewRows.length}）</p>
+              <p className="mb-1 flex items-center gap-1.5 font-semibold text-amber-800">
+                <AlertTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
+                需確認（{reviewRows.length}）
+              </p>
               <ul className="list-disc pl-5 text-amber-800">
                 {reviewRows.map((row) => (
                   <li key={row.sheetRow}>

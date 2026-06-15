@@ -26,12 +26,14 @@ export default function Tabs({ tabs, activeId, onChange }: Props) {
               key={tab.id}
               type="button"
               role="tab"
+              id={`tab-${tab.id}`}
               aria-selected={isActive}
+              aria-controls={`panel-${tab.id}`}
               onClick={() => onChange(tab.id)}
               className={
-                "cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-300 focus:outline-none " +
+                "cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 focus:ring-2 focus:ring-ring focus:outline-none " +
                 (isActive
-                  ? "bg-blue-600 text-white"
+                  ? "bg-primary text-white shadow-sm"
                   : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50")
               }
             >
@@ -41,7 +43,9 @@ export default function Tabs({ tabs, activeId, onChange }: Props) {
         })}
       </div>
 
-      <div role="tabpanel">{active.content}</div>
+      <div role="tabpanel" id={`panel-${active.id}`} aria-labelledby={`tab-${active.id}`}>
+        {active.content}
+      </div>
     </div>
   );
 }

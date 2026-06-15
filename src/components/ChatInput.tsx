@@ -1,3 +1,6 @@
+import StepHeading from "./StepHeading";
+import { fileInput } from "./buttonStyles";
+
 interface Props {
   value: string;
   onChange: (text: string) => void;
@@ -14,8 +17,8 @@ export default function ChatInput({ value, onChange }: Props) {
   }
 
   return (
-    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-3 text-base font-semibold">1. 貼上對話紀錄（或上傳 .txt）</h2>
+    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <StepHeading step={1} title="貼上對話紀錄（或上傳 .txt）" />
       <label htmlFor="chat" className="sr-only">
         對話紀錄內容
       </label>
@@ -24,14 +27,14 @@ export default function ChatInput({ value, onChange }: Props) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="把 LINE 匯出的對話紀錄文字整段貼在這裡…"
-        className="min-h-44 w-full resize-y rounded-lg border border-slate-300 p-3 font-mono text-[13px] leading-relaxed focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none"
+        className="min-h-44 w-full resize-y rounded-lg border border-slate-300 p-3 font-mono text-[13px] leading-relaxed focus:border-primary focus:ring-2 focus:ring-ring focus:outline-none"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <input
           type="file"
           accept=".txt,text/plain"
           onChange={handleFile}
-          className="cursor-pointer rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 hover:file:bg-slate-200"
+          className={fileInput}
         />
         <span className="text-sm text-slate-500">
           從 LINE 聊天室 →「其他設定」→「傳送聊天記錄」匯出文字檔。

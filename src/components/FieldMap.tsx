@@ -9,8 +9,8 @@ const ROWS: [string, string, string][] = [
 /** 欄位對應說明表。 */
 export default function FieldMap() {
   return (
-    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-3 text-base font-semibold">欄位對應</h2>
+    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <h3 className="mb-3 text-base font-semibold text-slate-800">欄位對應</h3>
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500">

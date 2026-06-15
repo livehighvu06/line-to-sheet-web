@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
+/* 品牌語意色 token（來自 ui-ux-pro-max；天空藍主色 + 冒險橘強調，已過 WCAG）。
+   定義於 @theme 後，bg-primary／text-accent／ring-ring 等 utility 即可使用。 */
+@theme {
+  --color-primary: #0ea5e9; /* sky-500 */
+  --color-primary-hover: #0284c7; /* sky-600 */
+  --color-accent: #ea580c; /* orange-600，關鍵 CTA */
+  --color-accent-hover: #c2410c; /* orange-700 */
+  --color-background: #f0f9ff; /* sky-50 */
+  --color-ring: #0ea5e9;
+}
+
 :root {
   font-family: -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
     system-ui, sans-serif;
+}
+
+/* 尊重「減少動態」系統設定：關閉過場與動畫。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -14,6 +14,8 @@ import ResultActions from "./ResultActions";
 import PreviewTable from "./PreviewTable";
 import ReviewList from "./ReviewList";
 import FieldMap from "./FieldMap";
+import PrivacyNote from "./PrivacyNote";
+import StepHeading from "./StepHeading";
 import Toast from "./Toast";
 
 interface Result {
@@ -71,15 +73,15 @@ export default function LineToSheetTab() {
 
   return (
     <>
-      <h2 className="text-xl font-bold">馬上飛名單 → Google Sheet 待貼上表格</h2>
+      <h2 className="text-xl font-bold">名單 → Google Sheet 待貼上表格</h2>
       <p className="mt-1 mb-5 text-sm text-slate-500">
         把 LINE 群組對話紀錄貼上，抽取訂單欄位，產生可直接貼進試算表的表格。
       </p>
 
-      <p className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
-        🔒 所有處理都在你的瀏覽器內完成，對話內容與客戶資料
+      <PrivacyNote>
+        所有處理都在你的瀏覽器內完成，對話內容與客戶資料
         <strong>不會上傳到任何伺服器</strong>。
-      </p>
+      </PrivacyNote>
 
       <ChatInput value={input} onChange={setInput} />
 
@@ -91,11 +93,11 @@ export default function LineToSheetTab() {
       />
 
       {result && (
-        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-base font-semibold">3. 結果</h2>
+        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+          <StepHeading step={3} title="結果" />
           <p className="mb-1">
-            從 <b className="text-blue-700">{result.startDate}</b> 起，去重後共{" "}
-            <b className="text-blue-700">{result.orders.length}</b> 筆訂單（已略過{" "}
+            從 <b className="text-primary">{result.startDate}</b> 起，去重後共{" "}
+            <b className="text-primary">{result.orders.length}</b> 筆訂單（已略過{" "}
             {result.duplicates} 筆重複）。
           </p>
           <ResultActions

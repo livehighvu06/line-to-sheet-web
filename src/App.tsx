@@ -1,5 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import Tabs, { type TabItem } from "./components/Tabs";
+import AppHeader from "./components/AppHeader";
+import BackToTop from "./components/BackToTop";
 import LineToSheetTab from "./components/LineToSheetTab";
 
 // 刷卡對帳頁相依較重的 xlsx，延遲載入：開啟此分頁時才下載對應 chunk。
@@ -24,11 +26,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(tabs[0].id);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
+    <div className="min-h-screen bg-background text-slate-800">
+      <AppHeader />
       <main className="mx-auto max-w-3xl px-4 pt-6 pb-16">
-        <h1 className="mb-5 text-2xl font-bold">馬上飛工具箱</h1>
         <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
       </main>
+      <BackToTop />
     </div>
   );
 }

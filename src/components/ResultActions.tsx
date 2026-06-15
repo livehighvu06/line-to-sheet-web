@@ -1,3 +1,5 @@
+import { btnAccent, btnGhost } from "./buttonStyles";
+
 interface Props {
   onCopy: () => void;
   onDownloadTsv: () => void;
@@ -12,28 +14,19 @@ export default function ResultActions({
   onDownloadReview,
   reviewCount,
 }: Props) {
-  const primary =
-    "cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none focus:ring-2";
-  const ghost =
-    "cursor-pointer rounded-lg border border-blue-600 bg-white px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
-
   return (
     <div className="my-3 flex flex-wrap gap-2.5">
-      <button
-        type="button"
-        onClick={onCopy}
-        className={`${primary} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-300`}
-      >
+      <button type="button" onClick={onCopy} className={btnAccent}>
         複製待貼上表格
       </button>
-      <button type="button" onClick={onDownloadTsv} className={ghost}>
+      <button type="button" onClick={onDownloadTsv} className={btnGhost}>
         下載 TSV
       </button>
       <button
         type="button"
         onClick={onDownloadReview}
         disabled={reviewCount === 0}
-        className={ghost}
+        className={btnGhost}
       >
         下載需確認清單
       </button>

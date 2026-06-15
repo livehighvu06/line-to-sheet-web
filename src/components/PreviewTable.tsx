@@ -26,13 +26,13 @@ export default function PreviewTable({ orders }: Props) {
         <tbody>
           {orders.map((o, n) => (
             <tr key={n} className={o.review ? "bg-orange-50" : undefined}>
-              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap text-slate-400">
+              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap text-slate-400 tabular-nums">
                 {n + 1}
               </td>
-              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap">{o.date}</td>
+              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap tabular-nums">{o.date}</td>
               <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap">{o.airline}</td>
               <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap">{o.trip}</td>
-              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap">{o.qty}</td>
+              <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap tabular-nums">{o.qty}</td>
               <td className="border-b border-slate-100 px-3 py-1.5 whitespace-nowrap">{o.name}</td>
             </tr>
           ))}
