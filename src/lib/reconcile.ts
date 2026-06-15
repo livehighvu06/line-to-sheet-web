@@ -46,7 +46,7 @@ export function readWorkbook(file: File): Promise<XLSX.WorkBook> {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        resolve(XLSX.read(reader.result as ArrayBuffer, { type: "array" }));
+        resolve(XLSX.read(reader.result as ArrayBuffer, { type: "array", cellNF: true }));
       } catch (err) {
         reject(err);
       }
