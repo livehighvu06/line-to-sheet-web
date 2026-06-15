@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import Tabs, { type TabItem } from "./components/Tabs";
 import AppHeader from "./components/AppHeader";
-import BackToTop from "./components/BackToTop";
+import FloatingMascot from "./components/FloatingMascot";
 import LineToSheetTab from "./components/LineToSheetTab";
 
 // 刷卡對帳頁相依較重的 xlsx，延遲載入：開啟此分頁時才下載對應 chunk。
@@ -30,8 +30,8 @@ export default function App() {
       <AppHeader />
       <main className="mx-auto max-w-3xl px-4 pt-6 pb-16">
         <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
+        <FloatingMascot />
       </main>
-      <BackToTop />
     </div>
   );
 }
