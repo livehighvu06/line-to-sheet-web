@@ -10,6 +10,7 @@
     "test:parser": "node scripts/parser-parity.ts"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "xlsx": "^0.18.5"

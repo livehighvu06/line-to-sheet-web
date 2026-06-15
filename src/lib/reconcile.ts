@@ -6,14 +6,18 @@
  *
  * 比對鍵＝日期＋航空＋姓名（標籤）；LinkPay 先依訂單號去重、只取付款成功。
  * 同一鍵有多筆（分次刷卡）時，依金額排序與業績表同鍵多列逐一對應，數量不符則列入需確認。
+ *
+ * 業績表用 ExcelJS 讀寫以保留儲存格樣式（顏色、欄寬）；
+ * LinkPay 用 SheetJS 讀取以支援 .xls 格式。
  */
+import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
 import { parseOrder } from "./parser";
 
 export type RowStatus = "filled" | "review" | "none";
 
 export interface ReconcileRow {
-  sheetRow: number; // 0-based 工作表列索引（含標題列），寫回用
+  sheetRow: number; // ExcelJS 1-based 列號，寫回用
   name: string;
   date: string;
   airline: string;
@@ -30,9 +34,9 @@ export interface ReconcileResult {
   reviewCount: number;
   noneCount: number;
   unmatchedLink: string[]; // LinkPay 付款成功但業績表查無
-  workbook: XLSX.WorkBook; // 業績表（供寫回下載）
+  workbook: ExcelJS.Workbook; // 業績表（供寫回下載）
   sheetName: string;
-  amountCol: number; // 金額欄 0-based
+  amountCol: number; // 金額欄 ExcelJS 1-based
 }
 
 interface LinkTxn {
@@ -40,13 +44,31 @@ interface LinkTxn {
   raw: string;
 }
 
-/** 讀檔成 SheetJS 工作簿（支援 .xls / .xlsx）。 */
-export function readWorkbook(file: File): Promise<XLSX.WorkBook> {
+/** 讀業績表（.xlsx）成 ExcelJS 工作簿，保留完整樣式。 */
+export function readPerfWorkbook(file: File): Promise<ExcelJS.Workbook> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(reader.result as ArrayBuffer);
+        resolve(wb);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/** 讀 LinkPay 訂單（.xls / .xlsx）成 SheetJS 工作簿。 */
+export function readLinkWorkbook(file: File): Promise<XLSX.WorkBook> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        resolve(XLSX.read(reader.result as ArrayBuffer, { type: "array", cellNF: true }));
+        resolve(XLSX.read(reader.result as ArrayBuffer, { type: "array" }));
       } catch (err) {
         reject(err);
       }
@@ -67,27 +89,58 @@ function toAmount(v: unknown): number {
   return Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
 }
 
-/** Excel 日期序號或文字 → M/D。 */
+/** ExcelJS 儲存格值 → 日期 M/D 字串。 */
 function toMonthDay(v: unknown): string {
+  if (v instanceof Date) return `${v.getMonth() + 1}/${v.getDate()}`;
   const n = Number(v);
   if (!isNaN(n) && n > 1000) {
-    const d = XLSX.SSF.parse_date_code(n);
-    if (d) return `${d.m}/${d.d}`;
+    const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+    return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
   }
   const m = /(\d{1,2})\/(\d{1,2})/.exec(String(v ?? ""));
   return m ? `${+m[1]}/${+m[2]}` : String(v ?? "");
 }
 
-/** 在標題列找第一個符合 predicate 的欄位 index，找不到回傳 fallback。 */
-function findCol(header: unknown[], predicate: (h: string) => boolean, fallback: number): number {
+/** 從 ExcelJS Cell 取出純值（處理公式、富文字、連結等包裝型別）。 */
+function cellVal(cell: ExcelJS.Cell): unknown {
+  const v = cell.value;
+  if (v === null || v === undefined) return null;
+  if (typeof v === "object") {
+    if ("formula" in v || "sharedFormula" in v)
+      return (v as ExcelJS.CellFormulaValue).result ?? null;
+    if ("richText" in v)
+      return (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join("");
+    if ("text" in v) return (v as ExcelJS.CellHyperlinkValue).text;
+    if ("error" in v) return null;
+  }
+  return v;
+}
+
+/** 在 ExcelJS 標題列找符合 predicate 的欄位（回傳 1-based），找不到回傳 fallback。 */
+function findColExcel(
+  headerRow: ExcelJS.Row,
+  predicate: (h: string) => boolean,
+  fallback: number
+): number {
+  let found = -1;
+  headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    if (found < 0 && predicate(String(cellVal(cell) ?? ""))) found = colNumber;
+  });
+  return found >= 0 ? found : fallback;
+}
+
+/** 在 SheetJS 標題列找符合 predicate 的欄位（回傳 0-based），找不到回傳 fallback。 */
+function findColXlsx(
+  header: unknown[],
+  predicate: (h: string) => boolean,
+  fallback: number
+): number {
   const idx = header.findIndex((h) => predicate(String(h ?? "")));
   return idx >= 0 ? idx : fallback;
 }
 
-function sheetRows(ws: XLSX.WorkSheet): { rows: unknown[][]; startRow: number } {
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false });
-  const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
-  return { rows, startRow: range.s.r };
+function sheetRowsXlsx(ws: XLSX.WorkSheet): { rows: unknown[][]; } {
+  return { rows: XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false }) };
 }
 
 /** 由 LinkPay 工作簿建立「比對鍵 → 交易清單」索引。 */
@@ -96,12 +149,12 @@ function indexLinkPay(wb: XLSX.WorkBook): {
   rawByKey: Map<string, string>;
 } {
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const { rows } = sheetRows(ws);
+  const { rows } = sheetRowsXlsx(ws);
   const header = rows[0] ?? [];
-  const descCol = findCol(header, (h) => h.includes("付款名稱"), 4);
-  const amountCol = findCol(header, (h) => h.includes("交易金額") || h.includes("金額"), 6);
-  const statusCol = findCol(header, (h) => h.includes("付款狀態"), 8);
-  const idCol = findCol(header, (h) => h.includes("訂單號碼"), 3);
+  const descCol = findColXlsx(header, (h) => h.includes("付款名稱"), 4);
+  const amountCol = findColXlsx(header, (h) => h.includes("交易金額") || h.includes("金額"), 6);
+  const statusCol = findColXlsx(header, (h) => h.includes("付款狀態"), 8);
+  const idCol = findColXlsx(header, (h) => h.includes("訂單號碼"), 3);
 
   const groups = new Map<string, LinkTxn[]>();
   const rawByKey = new Map<string, string>();
@@ -111,13 +164,13 @@ function indexLinkPay(wb: XLSX.WorkBook): {
     const r = rows[i];
     if (!r) continue;
     const id = String(r[idCol] ?? "");
-    if (id && seenId.has(id)) continue; // 依訂單號去重（避免重複列金額翻倍）
+    if (id && seenId.has(id)) continue; // 依訂單號去重
     if (id) seenId.add(id);
     if (String(r[statusCol] ?? "") !== "付款成功") continue;
 
     const desc = String(r[descCol] ?? "");
     const order = parseOrder(desc);
-    if (!order) continue; // 無括號標籤者略過（無法以姓名比對）
+    if (!order) continue;
     const key = keyOf(order.date, order.airline, order.name);
     const list = groups.get(key) ?? [];
     list.push({ amount: toAmount(r[amountCol]), raw: desc });
@@ -128,32 +181,33 @@ function indexLinkPay(wb: XLSX.WorkBook): {
 }
 
 /** 執行對帳。 */
-export function reconcile(perfWb: XLSX.WorkBook, linkWb: XLSX.WorkBook): ReconcileResult {
+export function reconcile(perfWb: ExcelJS.Workbook, linkWb: XLSX.WorkBook): ReconcileResult {
   const { groups: linkGroups, rawByKey } = indexLinkPay(linkWb);
 
-  const sheetName = perfWb.SheetNames[0];
-  const ws = perfWb.Sheets[sheetName];
-  const { rows, startRow } = sheetRows(ws);
-  const header = rows[0] ?? [];
-  const dateCol = findCol(header, (h) => h.includes("出發"), 1);
-  const airlineCol = findCol(header, (h) => h.includes("航空"), 2);
-  const tripCol = findCol(header, (h) => h.includes("團名") || h.includes("地點"), 3);
-  const amountCol = findCol(header, (h) => h.includes("金額"), 6);
-  const nameCol = findCol(header, (h) => h.includes("姓名"), 9);
+  const ws = perfWb.worksheets[0];
+  const sheetName = ws.name;
+  const headerRow = ws.getRow(1);
 
-  // 蒐集有姓名的資料列，並依比對鍵分組
+  const dateCol    = findColExcel(headerRow, (h) => h.includes("出發"), 2);
+  const airlineCol = findColExcel(headerRow, (h) => h.includes("航空"), 3);
+  const tripCol    = findColExcel(headerRow, (h) => h.includes("團名") || h.includes("地點"), 4);
+  const amountCol  = findColExcel(headerRow, (h) => h.includes("金額"), 7);
+  const nameCol    = findColExcel(headerRow, (h) => h.includes("姓名"), 10);
+
   const dataRows: ReconcileRow[] = [];
   const byKey = new Map<string, ReconcileRow[]>();
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    if (!r || !r[nameCol]) continue;
+
+  for (let i = 2; i <= ws.rowCount; i++) {
+    const r = ws.getRow(i);
+    const nameVal = cellVal(r.getCell(nameCol));
+    if (!nameVal) continue;
     const row: ReconcileRow = {
-      sheetRow: startRow + i,
-      name: String(r[nameCol]),
-      date: toMonthDay(r[dateCol]),
-      airline: String(r[airlineCol] ?? ""),
-      trip: String(r[tripCol] ?? ""),
-      originalAmount: String(r[amountCol] ?? ""),
+      sheetRow: i,
+      name: String(nameVal),
+      date: toMonthDay(cellVal(r.getCell(dateCol))),
+      airline: String(cellVal(r.getCell(airlineCol)) ?? ""),
+      trip: String(cellVal(r.getCell(tripCol)) ?? ""),
+      originalAmount: String(cellVal(r.getCell(amountCol)) ?? ""),
       matchedAmount: null,
       status: "none",
     };
@@ -164,14 +218,12 @@ export function reconcile(perfWb: XLSX.WorkBook, linkWb: XLSX.WorkBook): Reconci
     byKey.set(key, g);
   }
 
-  // 逐鍵比對
   const usedKeys = new Set<string>();
   for (const [key, group] of byKey) {
     const txns = linkGroups.get(key);
-    if (!txns) continue; // 業績表有、LinkPay 無 → 維持 none（查無）
+    if (!txns) continue;
     usedKeys.add(key);
     if (txns.length === group.length) {
-      // 數量一致：依金額排序逐一對應
       const amounts = txns.map((t) => t.amount).sort((a, b) => a - b);
       const sortedRows = [...group].sort((a, b) => toAmount(a.originalAmount) - toAmount(b.originalAmount));
       sortedRows.forEach((row, idx) => {
@@ -179,7 +231,6 @@ export function reconcile(perfWb: XLSX.WorkBook, linkWb: XLSX.WorkBook): Reconci
         row.status = "filled";
       });
     } else {
-      // 數量不符 → 需確認，不自動回填
       for (const row of group) {
         row.status = "review";
         row.note = `LinkPay ${txns.length} 筆／業績表 ${group.length} 列，數量不符`;
@@ -187,7 +238,6 @@ export function reconcile(perfWb: XLSX.WorkBook, linkWb: XLSX.WorkBook): Reconci
     }
   }
 
-  // LinkPay 有成功、業績表查無者
   const unmatchedLink: string[] = [];
   for (const [key, raw] of rawByKey) {
     if (!usedKeys.has(key)) unmatchedLink.push(raw);
@@ -195,30 +245,20 @@ export function reconcile(perfWb: XLSX.WorkBook, linkWb: XLSX.WorkBook): Reconci
 
   const filledCount = dataRows.filter((r) => r.status === "filled").length;
   const reviewCount = dataRows.filter((r) => r.status === "review").length;
-  const noneCount = dataRows.filter((r) => r.status === "none").length;
+  const noneCount   = dataRows.filter((r) => r.status === "none").length;
 
-  return {
-    rows: dataRows,
-    filledCount,
-    reviewCount,
-    noneCount,
-    unmatchedLink,
-    workbook: perfWb,
-    sheetName,
-    amountCol,
-  };
+  return { rows: dataRows, filledCount, reviewCount, noneCount, unmatchedLink, workbook: perfWb, sheetName, amountCol };
 }
 
-/** 把已比對金額寫回業績表金額欄，回傳可下載的 xlsx Blob。 */
-export function writeBack(result: ReconcileResult): Blob {
-  const ws = result.workbook.Sheets[result.sheetName];
+/** 把已比對金額寫回業績表金額欄，回傳可下載的 xlsx Blob（保留原始樣式）。 */
+export async function writeBack(result: ReconcileResult): Promise<Blob> {
+  const ws = result.workbook.getWorksheet(result.sheetName)!;
   for (const row of result.rows) {
     if (row.status !== "filled" || row.matchedAmount === null) continue;
-    const addr = XLSX.utils.encode_cell({ r: row.sheetRow, c: result.amountCol });
-    ws[addr] = { t: "n", v: row.matchedAmount };
+    ws.getCell(row.sheetRow, result.amountCol).value = row.matchedAmount;
   }
-  const out = XLSX.write(result.workbook, { bookType: "xlsx", type: "array" });
-  return new Blob([out], {
+  const buffer = await result.workbook.xlsx.writeBuffer();
+  return new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 }

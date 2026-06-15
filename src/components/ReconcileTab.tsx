@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import {
   buildAmountColumn,
-  readWorkbook,
+  readPerfWorkbook,
+  readLinkWorkbook,
   reconcile,
   writeBack,
   type ReconcileResult,
@@ -52,8 +53,8 @@ export default function ReconcileTab() {
     setError("");
     try {
       const [perfWb, linkWb] = await Promise.all([
-        readWorkbook(perfFile),
-        readWorkbook(linkFile),
+        readPerfWorkbook(perfFile),
+        readLinkWorkbook(linkFile),
       ]);
       setResult(reconcile(perfWb, linkWb));
     } catch {
@@ -72,9 +73,9 @@ export default function ReconcileTab() {
     }
   }, [result, showToast]);
 
-  const downloadXlsx = useCallback(() => {
+  const downloadXlsx = useCallback(async () => {
     if (!result) return;
-    downloadBlob("業績表_已回填金額.xlsx", writeBack(result));
+    downloadBlob("業績表_已回填金額.xlsx", await writeBack(result));
   }, [result]);
 
   const reviewRows = result?.rows.filter((r) => r.status === "review") ?? [];
@@ -151,8 +152,7 @@ export default function ReconcileTab() {
             </button>
           </div>
           <p className="mb-3 text-sm text-slate-500">
-            「複製金額欄」可無損貼回原試算表（對齊第一筆姓名列的金額欄）；下載 xlsx 為便利選項，
-            可能不保留原始格式與公式。
+            「複製金額欄」可無損貼回原試算表（對齊第一筆姓名列的金額欄）；下載 xlsx 會保留原始樣式與公式。
           </p>
 
           <div className="overflow-x-auto">
