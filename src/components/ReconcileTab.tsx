@@ -68,8 +68,12 @@ export default function ReconcileTab() {
 
   const downloadXlsx = useCallback(async () => {
     if (!result) return;
-    downloadBlob("業績表_已回填金額.xlsx", await writeBack(result));
-  }, [result]);
+    try {
+      downloadBlob("業績表_已回填金額.xlsx", await writeBack(result));
+    } catch {
+      showToast("下載失敗，請重新對帳後再試");
+    }
+  }, [result, showToast]);
 
   const reviewRows = result?.rows.filter((r) => r.status === "review") ?? [];
 

@@ -78,7 +78,7 @@ export function readLinkWorkbook(file: File): Promise<XLSX.WorkBook> {
   });
 }
 
-const norm = (s: unknown) => String(s ?? "").toLowerCase().replace(/\s+/g, "").trim();
+const norm = (s: unknown) => String(s ?? "").toLowerCase().replace(/\s+/g, "");
 
 function keyOf(date: string, airline: string, name: string): string {
   return [norm(date), norm(airline), norm(name)].join("|");
@@ -106,8 +106,12 @@ function cellVal(cell: ExcelJS.Cell): unknown {
   const v = cell.value;
   if (v === null || v === undefined) return null;
   if (typeof v === "object") {
-    if ("formula" in v || "sharedFormula" in v)
-      return (v as ExcelJS.CellFormulaValue).result ?? null;
+    if ("formula" in v || "sharedFormula" in v) {
+      const r = (v as ExcelJS.CellFormulaValue).result;
+      // 公式計算結果本身也可能是錯誤物件（如 #N/A），需額外判斷
+      if (r != null && typeof r === "object" && "error" in r) return null;
+      return r ?? null;
+    }
     if ("richText" in v)
       return (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join("");
     if ("text" in v) return (v as ExcelJS.CellHyperlinkValue).text;
@@ -139,17 +143,13 @@ function findColXlsx(
   return idx >= 0 ? idx : fallback;
 }
 
-function sheetRowsXlsx(ws: XLSX.WorkSheet): { rows: unknown[][]; } {
-  return { rows: XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false }) };
-}
-
 /** 由 LinkPay 工作簿建立「比對鍵 → 交易清單」索引。 */
 function indexLinkPay(wb: XLSX.WorkBook): {
   groups: Map<string, LinkTxn[]>;
   rawByKey: Map<string, string>;
 } {
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const { rows } = sheetRowsXlsx(ws);
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false });
   const header = rows[0] ?? [];
   const descCol = findColXlsx(header, (h) => h.includes("付款名稱"), 4);
   const amountCol = findColXlsx(header, (h) => h.includes("交易金額") || h.includes("金額"), 6);
@@ -164,9 +164,9 @@ function indexLinkPay(wb: XLSX.WorkBook): {
     const r = rows[i];
     if (!r) continue;
     const id = String(r[idCol] ?? "");
-    if (id && seenId.has(id)) continue; // 依訂單號去重
-    if (id) seenId.add(id);
+    if (id && seenId.has(id)) continue; // 依訂單號去重（只對付款成功去重，見下方）
     if (String(r[statusCol] ?? "") !== "付款成功") continue;
+    if (id) seenId.add(id);
 
     const desc = String(r[descCol] ?? "");
     const order = parseOrder(desc);
@@ -200,7 +200,7 @@ export function reconcile(perfWb: ExcelJS.Workbook, linkWb: XLSX.WorkBook): Reco
   for (let i = 2; i <= ws.rowCount; i++) {
     const r = ws.getRow(i);
     const nameVal = cellVal(r.getCell(nameCol));
-    if (!nameVal) continue;
+    if (nameVal === null || nameVal === undefined || nameVal === "") continue;
     const row: ReconcileRow = {
       sheetRow: i,
       name: String(nameVal),
@@ -225,7 +225,10 @@ export function reconcile(perfWb: ExcelJS.Workbook, linkWb: XLSX.WorkBook): Reco
     usedKeys.add(key);
     if (txns.length === group.length) {
       const amounts = txns.map((t) => t.amount).sort((a, b) => a - b);
-      const sortedRows = [...group].sort((a, b) => toAmount(a.originalAmount) - toAmount(b.originalAmount));
+      const sortedRows = [...group]
+        .map((row) => ({ row, amt: toAmount(row.originalAmount) }))
+        .sort((a, b) => a.amt - b.amt)
+        .map(({ row }) => row);
       sortedRows.forEach((row, idx) => {
         row.matchedAmount = amounts[idx];
         row.status = "filled";
