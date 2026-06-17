@@ -8,6 +8,7 @@ import {
   type Order,
 } from "../lib/parser";
 import { downloadText } from "../lib/download";
+import { useToast } from "../hooks/useToast";
 import ChatInput from "./ChatInput";
 import DaySelect from "./DaySelect";
 import ResultActions from "./ResultActions";
@@ -30,36 +31,29 @@ export default function LineToSheetTab() {
   const [input, setInput] = useState("");
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [toast, setToast] = useState("");
+  const [toast, showToast] = useToast();
 
-  const lines = useMemo(() => input.split("\n"), [input]);
-  const days = useMemo<Day[]>(() => indexDays(lines), [lines]);
+  const days = useMemo<Day[]>(() => indexDays(input.split("\n")), [input]);
 
   // 確保選取有效；days 變動時預設選第一天
   const effectiveIdx = useMemo(() => {
     if (days.length === 0) return null;
-    if (selectedIdx !== null && days.some((d) => d.idx === selectedIdx)) {
-      return selectedIdx;
-    }
-    return days[0].idx;
+    return selectedIdx !== null && days.some((d) => d.idx === selectedIdx)
+      ? selectedIdx
+      : days[0].idx;
   }, [days, selectedIdx]);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(""), 1600);
-  }, []);
 
   const run = useCallback(() => {
     if (effectiveIdx === null) return;
     const startDate = days.find((d) => d.idx === effectiveIdx)!.date;
-    const { orders, duplicates } = extractOrders(lines, effectiveIdx);
+    const { orders, duplicates } = extractOrders(input.split("\n"), effectiveIdx);
     setResult({
       startDate,
       orders,
       duplicates,
       reviewRows: orders.filter((o) => o.review),
     });
-  }, [days, effectiveIdx, lines]);
+  }, [days, effectiveIdx, input]);
 
   const copyTsv = useCallback(async () => {
     if (!result) return;

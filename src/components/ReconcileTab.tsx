@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useToast } from "../hooks/useToast";
 import {
   buildAmountColumn,
   readPerfWorkbook,
@@ -6,6 +7,7 @@ import {
   reconcile,
   writeBack,
   type ReconcileResult,
+  type RowStatus,
 } from "../lib/reconcile";
 import { downloadBlob } from "../lib/download";
 import Toast from "./Toast";
@@ -14,15 +16,10 @@ import StepHeading from "./StepHeading";
 import { AlertTriangleIcon } from "./icons";
 import { btnAccent, btnGhost, fileInput } from "./buttonStyles";
 
-const STATUS_LABEL: Record<string, string> = {
-  filled: "已填",
-  review: "需確認",
-  none: "查無",
-};
-const STATUS_STYLE: Record<string, string> = {
-  filled: "bg-emerald-100 text-emerald-700",
-  review: "bg-amber-100 text-amber-700",
-  none: "bg-slate-100 text-slate-500",
+const STATUS_CONFIG: Record<RowStatus, { label: string; style: string }> = {
+  filled: { label: "已填", style: "bg-emerald-100 text-emerald-700" },
+  review: { label: "需確認", style: "bg-amber-100 text-amber-700" },
+  none: { label: "查無", style: "bg-slate-100 text-slate-500" },
 };
 
 /** 刷卡對帳功能頁：用業績表姓名查 LinkPay 交易金額並回填。 */
@@ -31,21 +28,17 @@ export default function ReconcileTab() {
   const [linkFile, setLinkFile] = useState<File | null>(null);
   const [result, setResult] = useState<ReconcileResult | null>(null);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
-  // 變更後重設原生 file input 的顯示（強制重新掛載）
-  const [resetKey, setResetKey] = useState(0);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(""), 1600);
-  }, []);
+  const [toast, showToast] = useToast();
+  const perfInputRef = useRef<HTMLInputElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   const clearAll = useCallback(() => {
     setPerfFile(null);
     setLinkFile(null);
     setResult(null);
     setError("");
-    setResetKey((k) => k + 1);
+    if (perfInputRef.current) perfInputRef.current.value = "";
+    if (linkInputRef.current) linkInputRef.current.value = "";
   }, []);
 
   const run = useCallback(async () => {
@@ -97,7 +90,7 @@ export default function ReconcileTab() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="w-28 text-sm text-slate-500">業績表（.xlsx）</label>
             <input
-              key={`perf-${resetKey}`}
+              ref={perfInputRef}
               type="file"
               accept=".xlsx"
               onChange={(e) => setPerfFile(e.target.files?.[0] ?? null)}
@@ -107,7 +100,7 @@ export default function ReconcileTab() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="w-28 text-sm text-slate-500">LinkPay 訂單（.xls／.xlsx）</label>
             <input
-              key={`link-${resetKey}`}
+              ref={linkInputRef}
               type="file"
               accept=".xls,.xlsx"
               onChange={(e) => setLinkFile(e.target.files?.[0] ?? null)}
@@ -179,9 +172,9 @@ export default function ReconcileTab() {
                     </td>
                     <td className="py-1.5">
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLE[row.status]}`}
+                        className={`rounded px-1.5 py-0.5 text-xs ${STATUS_CONFIG[row.status].style}`}
                       >
-                        {STATUS_LABEL[row.status]}
+                        {STATUS_CONFIG[row.status].label}
                       </span>
                     </td>
                   </tr>
