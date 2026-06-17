@@ -33,7 +33,8 @@ export default function LineToSheetTab() {
   const [result, setResult] = useState<Result | null>(null);
   const [toast, showToast] = useToast();
 
-  const days = useMemo<Day[]>(() => indexDays(input.split("\n")), [input]);
+  const lines = useMemo(() => input.split("\n"), [input]);
+  const days = useMemo<Day[]>(() => indexDays(lines), [lines]);
 
   // 確保選取有效；days 變動時預設選第一天
   const effectiveIdx = useMemo(() => {
@@ -46,14 +47,14 @@ export default function LineToSheetTab() {
   const run = useCallback(() => {
     if (effectiveIdx === null) return;
     const startDate = days.find((d) => d.idx === effectiveIdx)!.date;
-    const { orders, duplicates } = extractOrders(input.split("\n"), effectiveIdx);
+    const { orders, duplicates } = extractOrders(lines, effectiveIdx);
     setResult({
       startDate,
       orders,
       duplicates,
       reviewRows: orders.filter((o) => o.review),
     });
-  }, [days, effectiveIdx, input]);
+  }, [days, effectiveIdx, lines]);
 
   const copyTsv = useCallback(async () => {
     if (!result) return;
