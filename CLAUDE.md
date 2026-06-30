@@ -12,7 +12,7 @@
 - Vite + React 19 + TypeScript
 - Tailwind CSS v4（`@tailwindcss/vite`，於 `src/index.css` 以 `@import "tailwindcss"` 引入）
 - SheetJS（`xlsx`）：讀寫 Excel，僅刷卡對帳頁用（已 lazy load 成獨立 chunk）
-- 無 router 套件；分頁切換為純前端 React state
+- 無 router 套件；以自訂 hash 路由（`src/hooks/useHashRoute.ts`）同步分頁與網址（`#/line-to-sheet`、`#/reconcile`），URL 即唯一狀態來源
 
 ## 常用指令
 
@@ -28,7 +28,9 @@ npm run test:parser  # 解析平價測試（需本機對話紀錄檔，路徑見
 ```
 src/
 ├── main.tsx                  進入點
-├── App.tsx                   外殼：頁首 + Tabs；僅持有 activeTab state（ReconcileTab 為 lazy）
+├── App.tsx                   外殼：頁首 + Tabs；activeTab 由 hash 路由驅動（ReconcileTab 為 lazy）
+├── hooks/
+│   └── useHashRoute.ts       ★ 輕量 hash 路由：URL hash ↔ 分頁 id，未知 hash 退回預設
 ├── components/
 │   ├── Tabs.tsx              ★ 通用分頁元件（TabItem 介面）
 │   ├── LineToSheetTab.tsx    功能頁：LINE→Sheet（持有該功能全部狀態）
