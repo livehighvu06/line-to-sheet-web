@@ -5,7 +5,9 @@
  * 取出該筆「交易金額」回填業績表的金額欄（G）。
  *
  * 比對鍵＝日期＋航空＋姓名（標籤）；LinkPay 先依訂單號去重、只取付款成功。
- * 同一鍵有多筆（分次刷卡）時，依金額排序與業績表同鍵多列逐一對應，數量不符則列入需確認。
+ * 同一鍵有多筆（分次刷卡）時，依金額排序與業績表同鍵多列逐一對應；
+ * LinkPay 筆數多於業績表列數時，取金額較小的前 N 筆回填，多餘者列入查無業績表清單；
+ * LinkPay 筆數少於業績表列數則列入需確認、不自動回填。
  *
  * 業績表用 ExcelJS 讀寫以保留儲存格樣式（顏色、欄寬）；
  * LinkPay 用 SheetJS 讀取以支援 .xls 格式。
@@ -219,18 +221,24 @@ export function reconcile(perfWb: ExcelJS.Workbook, linkWb: XLSX.WorkBook): Reco
   }
 
   const usedKeys = new Set<string>();
+  const extraUnmatchedRaws: string[] = [];
   for (const [key, group] of byKey) {
     const txns = linkGroups.get(key);
     if (!txns) continue;
     usedKeys.add(key);
-    if (txns.length === group.length) {
-      const amounts = txns.map((t) => t.amount).sort((a, b) => a - b);
+    if (txns.length >= group.length) {
+      // LinkPay 筆數較多或相等：取金額由小到大前 N 筆回填，多餘的列入待確認清單
+      const sortedTxns = [...txns].sort((a, b) => a.amount - b.amount);
+      const used = sortedTxns.slice(0, group.length);
+      const leftover = sortedTxns.slice(group.length);
+      leftover.forEach((t) => extraUnmatchedRaws.push(t.raw));
+
       const sortedRows = [...group]
         .map((row) => ({ row, amt: toAmount(row.originalAmount) }))
         .sort((a, b) => a.amt - b.amt)
         .map(({ row }) => row);
       sortedRows.forEach((row, idx) => {
-        row.matchedAmount = amounts[idx];
+        row.matchedAmount = used[idx].amount;
         row.status = "filled";
       });
     } else {
@@ -241,7 +249,7 @@ export function reconcile(perfWb: ExcelJS.Workbook, linkWb: XLSX.WorkBook): Reco
     }
   }
 
-  const unmatchedLink: string[] = [];
+  const unmatchedLink: string[] = [...extraUnmatchedRaws];
   for (const [key, raw] of rawByKey) {
     if (!usedKeys.has(key)) unmatchedLink.push(raw);
   }
